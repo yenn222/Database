@@ -281,3 +281,248 @@ SELECT customer_id, product_no, quantity, order_date
   	   WHERE quantity >= 10
   	   ORDER BY product_no ASC, quantity DESC;
   	  
+-- 집계 함수
+-- 15. 제품테이블에서 모든 제품의 평균 단가를 구하시오.
+	SELECT AVG(unit_price)
+	  FROM product;
+	 
+	 
+-- 16. 한밭제과가 제조한 제품의 재고량을 검색하시오.
+	 --SELECT SUM(stock) AS "재고량합계"
+	 SELECT SUM(stock) AS sum_stock
+	   FROM product
+	  WHERE manufacturer = '한밭제과';
+	  
+-- 17. 고객 테이블에 고객이 몇 명 등록되어 있는지 검색하시오. -> COUNT
+	 SELECT COUNT(customer_id)
+	   FROM customer;
+	  
+	 SELECT COUNT(customer_name)
+	   FROM customer;
+	
+	 SELECT COUNT(age)
+	   FROM customer;
+	  
+	 SELECT COUNT(*) -- 가장 많이 쓰는 표현
+	   FROM customer;
+	 
+     SELECT COUNT(1) -- 튜플의 개수를 세는 또다른 방식.
+       FROM customer;
+       
+-- 18. 제품테이블에서 제조업체 수를 검색하시오.
+      SELECT COUNT(manufacturer)
+        FROM product;
+       
+      SELECT COUNT(DISTINCT manufacturer) AS "제조업체수" -- 중복을 제거한 카운트. 연습 필요.
+        FROM product;
+        
+-- 19. 주문테이블에서 주문 수량의 합계를 검색하시오.
+       SELECT SUM(quantity)
+         FROM porder;
+        
+-- 19-1. 주문테이블에서 주문 제품별 주문 수량의 합계를 검색하시오.
+       SELECT product_no, SUM(quantity)
+         FROM porder
+     GROUP BY product_no
+     ORDER BY product_no;
+        
+-- 20. 제품 테이블에서 제조업체별로 제조한 제품의 개수와 최고가를 검색하시오.
+    SELECT manufacturer, COUNT(*) AS "제품수", MAX(unit_price) AS "최고가"
+      FROM product
+     GROUP BY manufacturer;
+  
+-- 21. 제품 테이블에서 제조업체별로 제조한 제품의 개수와 최고가를 검색하시오.
+ -- 제품의 개수가 3개 이상인 것만 포함 -> 그룹화를 한 결과에 대해 조건을 붙이는 것. -> HAVING
+    SELECT manufacturer, COUNT(*) AS "제품수", MAX(unit_price) AS "최고가"
+      FROM product
+     GROUP BY manufacturer
+    HAVING COUNT(*) >= 3; -- 여기엔 별명 못 붙임!
+    
+-- 22. 고객테이블에서 적립금 평균이 1000원 이상인 등급에 대해
+ -- 등급별 고객수와 적립금 평균을 검색하시오.
+    SELECT grade, COUNT(*) AS "고객수", AVG(saved_money)
+      FROM customer
+     GROUP BY grade
+    HAVING AVG(saved_money) >= 1000;
+   
+-- 23. 주문테이블에서 각 고객이 주문한 제품의 총 주문수량을 검색하시오.
+    SELECT customer_id, SUM(quantity) AS "총주문수량"
+      FROM porder
+     GROUP BY customer_id;
+    
+-- 23-1. 주문테이블에서 각 고객이 주문한 제품	별의 총 주문수량을 검색하시오.
+    SELECT customer_id, product_no, SUM(quantity) AS "총주문수량"
+      FROM porder
+     GROUP BY customer_id, product_no
+     ORDER BY customer_id, product_no; -- 결과를 한 눈에 보자.
+     
+    SELECT product_no, customer_id, SUM(quantity) AS "총주문수량"
+      FROM porder
+     GROUP BY product_no, customer_id -- 순서 바뀌어도 상관없음. 통채로 묶어서 처리하기 때문
+     ORDER BY product_no, customer_id; -- 순서가 의미가 있음. 앞에 있는 제품 번호를 먼저 정렬한 후 고객 아이디로 정렬.
+     
+ -- 조인 검색
+ 
+ -- 24. banana 고객이 주문한 제품의 이름을 검색하시오.
+     SELECT product_name
+       FROM porder, product
+      WHERE porder.product_no = product.product_no -- 조인 조건
+        AND customer_id = 'banana'; -- 일반 검색 조건
+        
+ -- 25. 나이가 30세 이상인 고객이 주문한 제품의 주문제품번호와 주문일자를 검색하시오.
+     SELECT customer_name, product_no, order_date
+       FROM customer, porder
+      WHERE customer.customer_id = porder.customer_id
+        AND age >= 30;
+        
+-- 테이블 이름 명시
+	 SELECT customer.customer_name, porder.product_no, porder.order_date
+       FROM customer, porder
+      WHERE customer.customer_id = porder.customer_id
+        AND customer.age >= 30;
+
+-- 약자를 사용 / 룰은 없으나 테이블명 첫글자를 쓰는 사례가 많음
+	 SELECT C.customer_name, PO.product_no, PO.order_date
+       FROM customer C, porder PO --중복이 있어 PO로. 또는 O
+      WHERE C.customer_id = PO.customer_id
+        AND C.age >= 30;
+        
+-- 25. 나이가 30세 이상인 고객이 주문한 제품의 
+-- 고객명, 주문제품명과 주문일자를 검색하시오.
+      SELECT C.customer_name, P.product_name, O.order_date 
+        FROM customer C, porder O, product P
+       WHERE C.customer_id = O.customer_id
+         AND O.product_no = P.product_no 
+         AND C.age >= 30;
+      
+-- 자체조인(셀프조인, self join)
+
+ALTER TABLE customer ADD recommender VARCHAR(20);
+
+ALTER TABLE customer ADD CONSTRAINT chk_recommender
+	FOREIGN KEY (recommender) REFERENCES customer(customer_id);
+
+UPDATE customer
+   SET recommender = 'orange'
+ WHERE customer_id = 'apple';
+
+-- 27. 고객과 추천인의 이름을 검색하시오. (자체 조인)
+SELECT C.customer_name AS "고객이름", R.customer_name AS "추천인이름"
+  FROM customer C, customer R -- 자체 조인에서는 별명 필수
+ WHERE C.recommender = R.customer_id;
+
+-- 삭제
+ALTER TABLE customer DROP CONSTRAINT chk_recommender;
+ALTER TABLE customer DROP COLUMN recommender;
+
+-- INNER JOIN
+-- 28. 나이가 30세 이상인 고객이 주문한 제품의 주문제품번호와 주문일자를 검색하시오.
+
+SELECT C.customer_name, O.product_no, O.order_date
+  FROM customer C
+  	   INNER JOIN porder O ON C.customer_id  = O.customer_id -- 연결할 것을 명시.
+ WHERE C.age >= 30;
+
+-- 외부 조인(OUTER JOIN)
+-- 29. 주문하지 않은 고객을 포함해서
+-- 주문 고객이름, 주문제품번호, 주문일자를 검색하시오.
+ SELECT C.customer_name, O.product_no, O.order_date
+  FROM customer C --방향 설정 필요. 왼쪽을 종종 씀.
+  	   LEFT OUTER JOIN porder O ON C.customer_id  = O.customer_id;
+  	 
+-- 같은 결과. 오른쪽 외부 조인 
+ SELECT C.customer_name, O.product_no, O.order_date
+  FROM porder O 
+  	   RIGHT OUTER JOIN customer C ON C.customer_id  = O.customer_id;
+
+-- 같은 결과. FULL 외부 조인. 거의 안 씀. 성능 저하 이
+--SELECT C.customer_name, O.product_no, O.order_date
+--  FROM porder O 
+--  	   FULL OUTER JOIN customer C ON C.customer_id  = O.customer_id;
+
+  	  
+-- 부속질의(subquery)
+-- 30. 달콤비스킷을 생산한 제조업체가 만든 제품들의 제품명과 단가를 검색하시오.
+-- 30-1. 달콤비스킷을 생산한 제조업체 명을 검색하시오.
+SELECT manufacturer 
+  FROM product
+ WHERE product_name = '달콤비스킷';
+ 
+-- 30-2. 한밭제과가 제조한 제품들의 제품명과 단가를 검색하시오.
+SELECT product_name, unit_price
+  FROM product
+ WHERE manufacturer = '한밭제과';
+ 
+-- 30-3. 달콤비스킷을 생산한 제조업체가 만든 제품들의 제품명과 단가를 검색하시오.
+SELECT product_name, unit_price
+  FROM product
+ WHERE manufacturer = (SELECT manufacturer 
+  						 FROM product
+ 						WHERE product_name = '달콤비스킷');
+ 						
+-- 31. 적립금이 가장 많은 고객의 고객 이름과 적립금을 검색하시오.
+-- 31-1. 가장 많은 적립금을 검색하시오.
+SELECT MAX(saved_money)
+  FROM customer;
+ 
+-- 31-2. 고객 이름과 적립금을 검색하시오.
+SELECT customer_name, saved_money
+  FROM customer;
+
+SELECT customer_name, saved_money
+  FROM customer
+ WHERE saved_money = (SELECT MAX(saved_money)
+  FROM customer);
+  
+-- 32. banana 고객이 주문한 제품의 제품명과 제조업체를 검색하시오.
+-- 부속질의를 사용할 것
+ 
+-- 32-1. banana 고객이 주문한 제품의 제품번호를 검색하시오.
+SELECT product_no 
+  FROM porder
+ WHERE customer_id = 'banana';
+ 
+-- 32-3. banana 고객이 주문한 제품의 제품명과 제조업체를 검색하시오.
+SELECT product_name, manufacturer
+  FROM product
+ WHERE product_no IN (SELECT product_no 
+  					   FROM porder
+ 	 				  WHERE customer_id = 'banana');
+
+-- 33. banana 고객이 주문하지 않은 제품의 제품명과 제조업체를 검색하시오.
+SELECT product_name, manufacturer
+  FROM product
+ WHERE product_no NOT IN (SELECT product_no 
+  					   FROM porder
+ 	 				  WHERE customer_id = 'banana');
+ 	 				 
+-- 34. 대한식품이 제조한 모든 제품의 단가보다 비싼 제품의
+-- 제품명, 단가, 제조업체를 검색하시오.
+ 	 				 
+-- 대한식품이 제조한 제품의 단가를 검색하시오.
+SELECT unit_price
+  FROM product
+ WHERE manufacturer = '대한식품';
+
+-- 34. 대한식품이 제조한 모든 제품의 단가보다 비싼 제품의 제품명, 단가, 제조업체를 검색하시오.
+SELECT product_name, unit_price, manufacturer
+  FROM product
+ WHERE unit_price > ALL (SELECT unit_price
+  					    FROM product
+ 					   WHERE manufacturer = '대한식품');
+
+-- 35. 2022년 3월 15일에 제품을 주문한 고객의 고객이름을 검색하시오.
+-- 상관 중첩 질의 (correlated nested query)
+SELECT *
+  FROM porder
+ WHERE order_date = '2022-03-15';
+
+SELECT customer_name
+  FROM customer
+ WHERE EXISTS (SELECT *
+  FROM porder
+ WHERE order_date = '2022-03-15'
+   AND porder.customer_id = customer.customer_id);
+ 
+ 
+ 	 				 
